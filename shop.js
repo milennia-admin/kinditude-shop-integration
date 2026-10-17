@@ -335,18 +335,14 @@
   const editions = { "30x40cm": 3000, "50x70cm": 2000, "70x100cm": 1000, "100x150cm": 500, "150x225cm": 100 };
   const editionFor = (title) => editions[title.replace(/\s+/g, "").replace(/×/g, "x").toLowerCase()];
 
-  // Size pills: Lumos "main" text style for the title (heavier) and "small" for the edition line (regular weight).
-  // No hover or focus states: selection is the only state, and fill and text cross-fade together.
-  const pillStyles = `
-    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; transition: opacity 0.3s ease; }
-    .pdp_pill_edition { font-weight: 400; }
-    .pdp_pill_fill { transition: opacity 0.3s ease; }
-    .pdp_pill_wrap { transform: none; }
-    .pdp_pill_text_alt { color: var(--_theme---background); } /* dark text on the selected (cream) fill */
-
-    /* Add to cart: taller, solid brand-tertiary, three-dot loader while the cart request runs. */
-    .shop_button_green { background-color: var(--swatch--brand-tertiary); }
-    .shop_button_green .button_main_element { padding-block: var(--_spacing---space--4); background-color: var(--swatch--brand-tertiary); border-color: var(--swatch--brand-tertiary); color: var(--swatch--dark-900); }
+  // Styling that can't live in Webflow classes. Everything else (pill weights, selected-pill colour, green button
+  // theme mode, button height, no hover or scale) is set on the Webflow classes and variable modes in the Designer.
+  // - Size pills: the layer and its nested edition line both trim their bottom edge, which squeezes the bottom
+  //   padding; keep only the edition's. Lumos' trim selector is more specific, hence !important.
+  // - Add to cart loader: the dots are injected into the button component, so unused Designer classes would not
+  //   be published for them; keyframes can't be defined in Designer styles either.
+  const shopStyles = `
+    .pdp_pill_text::after, .pdp_pill_text_alt::after { margin-bottom: 0 !important; }
     .shop_button_green .button_main_text { transition: opacity 0.2s ease; }
     .pdp_add_dots { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0.45em; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
     .pdp_add_dots span { width: 0.5em; height: 0.5em; border-radius: 50%; background-color: currentColor; animation: pdp-dot-jump 1.1s ease-in-out infinite; }
@@ -355,9 +351,7 @@
     [data-shop="add"][aria-busy="true"] .button_main_text { opacity: 0; }
     [data-shop="add"][aria-busy="true"] .pdp_add_dots { opacity: 1; }
     @keyframes pdp-dot-jump { 0%, 55%, 100% { transform: translateY(0); } 25% { transform: translateY(-0.3em); } }
-    @media (prefers-reduced-motion: reduce) { .pdp_add_dots span { animation: none; } }
-    /* The layer and its nested edition line both trim their bottom edge, which squeezes the bottom padding; keep only the edition's. */
-    .pdp_pill_text::after, .pdp_pill_text_alt::after { margin-bottom: 0 !important; }`;
+    @media (prefers-reduced-motion: reduce) { .pdp_add_dots span { animation: none; } }`;
 
   // Pill layers hold the title as a text node plus an edition child, so only the text node is replaced.
   function setPillTitle(layer, title) {
@@ -459,7 +453,7 @@
   async function initProduct() {
     const wrap = $("[data-product-handle]");
     if (!wrap) return;
-    document.head.append(Object.assign(document.createElement("style"), { textContent: pillStyles }));
+    document.head.append(Object.assign(document.createElement("style"), { textContent: shopStyles }));
     // ?handle= wins; the wrapper attribute is the Designer-time fallback.
     const handle = new URLSearchParams(location.search).get("handle") || wrap.dataset.productHandle;
     if (!handle) return console.warn("[shop] no product handle");
@@ -546,11 +540,8 @@
           const pill = pillTemplate.cloneNode(true);
           setHidden(pill, false);
           pill.dataset.clone = "";
-          pill.removeAttribute("data-trigger"); // Lumos hover/focus trigger: not wanted on size pills
           pill.dataset.variantId = variant.id;
           $$('[data-shop-field="title"]', pill).forEach((layer) => setPillTitle(layer, variant.title));
-          $$('.pdp_pill_text, .pdp_pill_text_alt', pill).forEach((layer) => layer.classList.add("u-text-style-main"));
-          $$(".pdp_pill_edition", pill).forEach((layer) => layer.classList.add("u-text-style-small"));
           const edition = editionFor(variant.title);
           fill(pill, "edition", edition ? `Limited Edition: ${edition}` : "");
           $$('[data-shop-field="edition"]', pill).forEach((node) => setHidden(node, !edition));
