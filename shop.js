@@ -335,6 +335,18 @@
   const editions = { "30x40cm": 3000, "50x70cm": 2000, "70x100cm": 1000, "100x150cm": 500, "150x225cm": 100 };
   const editionFor = (title) => editions[title.replace(/\s+/g, "").replace(/×/g, "x").toLowerCase()];
 
+  // Size pills: heavy title, lighter and smaller edition line in the same colour, soft glow on hover and focus.
+  // Glow uses currentColor so it follows the pill's theme colour. Sizes are em-relative.
+  const pillStyles = `
+    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; line-height: 1.25; }
+    .pdp_pill_edition { font-weight: 400; font-size: 0.8em; line-height: 1.3; margin-top: 0.2em; letter-spacing: 0.01em; }
+    .pdp_pill_wrap { transition: transform 0.3s ease, box-shadow 0.35s ease; }
+    .pdp_pill_wrap:hover, .pdp_pill_wrap:focus-visible { box-shadow: 0 0 1.5em color-mix(in srgb, currentColor 38%, transparent); }
+    .pdp_pill_wrap.is-active { box-shadow: 0 0 1.25em color-mix(in srgb, currentColor 22%, transparent); }
+    .pdp_pill_wrap.is-active:hover { box-shadow: 0 0 1.75em color-mix(in srgb, currentColor 45%, transparent); }
+    .pdp_pill_wrap[aria-disabled="true"] { box-shadow: none; }
+    @media (prefers-reduced-motion: reduce) { .pdp_pill_wrap { transition: none; } }`;
+
   // Pill layers hold the title as a text node plus an edition child, so only the text node is replaced.
   function setPillTitle(layer, title) {
     const node = [...layer.childNodes].find((child) => child.nodeType === Node.TEXT_NODE);
@@ -435,6 +447,7 @@
   async function initProduct() {
     const wrap = $("[data-product-handle]");
     if (!wrap) return;
+    document.head.append(Object.assign(document.createElement("style"), { textContent: pillStyles }));
     // ?handle= wins; the wrapper attribute is the Designer-time fallback.
     const handle = new URLSearchParams(location.search).get("handle") || wrap.dataset.productHandle;
     if (!handle) return console.warn("[shop] no product handle");
