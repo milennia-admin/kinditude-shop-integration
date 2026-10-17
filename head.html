@@ -1,0 +1,21 @@
+<!-- Webflow: Site settings > Custom code > Head code. Prevents the placeholder flash on /shop and the product page. -->
+<link rel="preconnect" href="https://shop.kinditude.com" crossorigin>
+<link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+<script>
+  // Failsafe: if shop.js never reveals the content (blocked, offline), show the placeholders after 4s.
+  document.documentElement.classList.add("js-shop");
+  setTimeout(() => document.documentElement.classList.remove("js-shop"), 4000);
+</script>
+<style>
+  .js-shop [data-shop="grid"],
+  .js-shop [data-product-handle] {
+    opacity: 0;
+  }
+  .js-shop [data-shop="grid"][data-loaded],
+  .js-shop [data-product-handle][data-loaded] {
+    opacity: 1;
+    transition: opacity 0.25s ease;
+  }
+</style>
+<!-- Host shop.js and load it early; defer runs it after parsing but before DOMContentLoaded. -->
+<script src="https://cdn.jsdelivr.net/gh/milennia-admin/kinditude-shop-integration@main/shop.js" defer></script>
