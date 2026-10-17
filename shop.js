@@ -309,8 +309,8 @@
 
   /* ---------- Product page (CMS template <productPath>/<handle>; ?handle= still works on a static page) ---------- */
 
-  // "B – Brave (Namibia)" -> "Brave"
-  const letterName = (title) => title.match(/[–-]\s*(.+?)\s*(?:\(.*\))?$/)?.[1] ?? title;
+  // "B – Brave (Namibia)" -> "Brave"; other titles ("T-shirt", "Posters") stay as they are.
+  const letterName = (title) => title.match(/^[A-Z]\s+[–-]\s+(.+?)\s*(?:\(.*\))?$/)?.[1] ?? title;
 
   // Shopify bodies hold: <h2>Awaken - Start your day with wonder.</h2>, then
   // <p><strong>Children:</strong> 490</p> and <p><strong>Location:</strong> South Africa</p>.
@@ -434,6 +434,9 @@
       fill(wrap, "tagline", tagline);
       heading.remove();
     }
+    // No heading in the Shopify description: hide the Designer placeholder instead of showing it.
+    const taglineEl = $('[data-shop-field="tagline"]', wrap);
+    if (taglineEl) setHidden(taglineEl, !tagline);
     fillAccordions(wrap, doc);
     addAccordionIcons(wrap);
     // Children / Location meta lines (bold labels) take the accent colour.
