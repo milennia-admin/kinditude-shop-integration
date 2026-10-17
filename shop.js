@@ -335,11 +335,11 @@
   const editions = { "30x40cm": 3000, "50x70cm": 2000, "70x100cm": 1000, "100x150cm": 500, "150x225cm": 100 };
   const editionFor = (title) => editions[title.replace(/\s+/g, "").replace(/×/g, "x").toLowerCase()];
 
-  // Size pills: heavy title, lighter and smaller edition line in the same colour, soft glow on hover and focus.
-  // Glow uses currentColor so it follows the pill's theme colour. Sizes are em-relative.
+  // Size pills: Lumos "main" text style for the title (heavier) and "small" for the edition line (regular weight),
+  // plus a soft glow on hover and focus. Glow uses currentColor so it follows the pill's theme colour.
   const pillStyles = `
-    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; line-height: 1.25; }
-    .pdp_pill_edition { font-weight: 400; font-size: 0.8em; line-height: 1.3; margin-top: 0.2em; letter-spacing: 0.01em; }
+    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; }
+    .pdp_pill_edition { font-weight: 400; }
     .pdp_pill_wrap { transition: transform 0.3s ease, box-shadow 0.35s ease; }
     .pdp_pill_wrap:hover, .pdp_pill_wrap:focus-visible { box-shadow: 0 0 1.5em color-mix(in srgb, currentColor 38%, transparent); }
     .pdp_pill_wrap.is-active { box-shadow: 0 0 1.25em color-mix(in srgb, currentColor 22%, transparent); }
@@ -534,6 +534,8 @@
           pill.dataset.clone = "";
           pill.dataset.variantId = variant.id;
           $$('[data-shop-field="title"]', pill).forEach((layer) => setPillTitle(layer, variant.title));
+          $$('.pdp_pill_text, .pdp_pill_text_alt', pill).forEach((layer) => layer.classList.add("u-text-style-main"));
+          $$(".pdp_pill_edition", pill).forEach((layer) => layer.classList.add("u-text-style-small"));
           const edition = editionFor(variant.title);
           fill(pill, "edition", edition ? `Limited Edition: ${edition}` : "");
           $$('[data-shop-field="edition"]', pill).forEach((node) => setHidden(node, !edition));
