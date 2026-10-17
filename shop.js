@@ -492,7 +492,11 @@
     // No heading in the Shopify description: hide the Designer placeholder instead of showing it.
     const taglineEl = $('[data-shop-field="tagline"]', wrap);
     if (taglineEl) setHidden(taglineEl, !tagline);
-    if (!fillAccordionSource(wrap, product)) fillAccordions(wrap, doc);
+    if (!fillAccordionSource(wrap, product)) {
+      // Letters use the four print items; the fifth exists for products with five CMS sections.
+      $$(".accordion_component", wrap).slice(4).forEach((item) => setHidden(item, true));
+      fillAccordions(wrap, doc);
+    }
     addAccordionIcons(wrap);
     // Children / Location meta lines (bold labels) take the accent colour.
     // Description and stats share the tagline's weight, whatever the Designer sets it to.
