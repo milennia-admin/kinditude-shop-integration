@@ -25,4 +25,9 @@ jobs:
       - name: Sync (create, update, publish)
         env:
           WEBFLOW_TOKEN: ${{ secrets.WEBFLOW_TOKEN }}
-        run: node sync-cms.mjs --apply
+        run: |
+          if [ -z "$WEBFLOW_TOKEN" ]; then
+            echo "::warning::Repository secret WEBFLOW_TOKEN is not set, skipping the sync."
+            exit 0
+          fi
+          node sync-cms.mjs --apply
