@@ -26,12 +26,12 @@
     },
   };
 
-  const formatMoney = ({ amount, currencyCode }) =>
-    new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: Number(amount) % 1 ? 2 : 0,
-    }).format(Number(amount));
+  // Always two decimals with a comma, symbol first: €120,00 / €1.200,00.
+  const formatMoney = ({ amount, currencyCode }) => {
+    const symbol = new Intl.NumberFormat("en", { style: "currency", currency: currencyCode, currencyDisplay: "narrowSymbol" })
+      .formatToParts(0).find((part) => part.type === "currency").value;
+    return symbol + new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(amount));
+  };
 
   async function storefront(query, variables = {}) {
     const res = await fetch(`https://${config.domain}/api/${config.apiVersion}/graphql.json`, {
