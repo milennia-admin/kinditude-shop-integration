@@ -370,20 +370,44 @@
     });
   }
 
-  // Shopify sections (<h4>About this print</h4><p>…</p>) move into the accordion item with the same title.
+  // Description sections move into the accordion item they belong to. A section runs from its heading to the next
+  // heading of the same or higher level, so sub-headings (<h3>Delivery Time</h3>) travel with it. A heading matches
+  // an item by its own title ("About this print") or by an alias for the headings written in the Shopify bodies.
   // Sections without a matching item stay in the description.
+  const accordionAliases = {
+    "limited edition": "sizes & framing",
+    "paper quality": "about this print",
+    "shipping information": "shipping",
+    "return policy": "returns & refunds",
+  };
+
   function fillAccordions(wrap, doc) {
     const normalize = (text) => text.replace(/\s+/g, " ").trim().toLowerCase();
+    const level = (node) => Number(node.tagName[1]);
     const items = $$(".accordion_component", wrap);
+    const filled = new Set();
     $$("h2, h3, h4, h5, h6", doc).forEach((sectionHeading) => {
-      const item = items.find((el) => normalize($(".accordion_toggle_text", el)?.textContent ?? "") === normalize(sectionHeading.textContent));
+      if (!doc.body.contains(sectionHeading)) return; // already moved inside a parent section
+      const title = normalize(sectionHeading.textContent);
+      const wanted = accordionAliases[title] ?? title;
+      const item = items.find((el) => normalize($(".accordion_toggle_text", el)?.textContent ?? "") === wanted);
       const target = item && $(".accordion_content_text", item);
       if (!target) return;
       const section = [];
-      for (let node = sectionHeading.nextElementSibling; node && !/^H[1-6]$/.test(node.tagName); node = node.nextElementSibling) section.push(node);
-      target.innerHTML = section.map((node) => node.outerHTML).join("");
+      for (let node = sectionHeading.nextElementSibling; node && !(/^H[1-6]$/.test(node.tagName) && level(node) <= level(sectionHeading)); node = node.nextElementSibling) section.push(node);
+      // Several sections can share an item; the first one replaces the Designer placeholder copy.
+      if (!filled.has(target)) target.innerHTML = "";
+      filled.add(target);
+      // Keep the original heading inside the item when the title differs, so the content stays labelled.
+      const label = document.createElement("p");
+      label.innerHTML = "<strong></strong>";
+      label.firstChild.textContent = sectionHeading.textContent.trim();
+      const body = section.filter((node) => !(/^H[1-6]$/.test(node.tagName) && normalize(node.textContent) === wanted));
+      target.append(...[...(title === wanted ? [] : [label]), ...body].map((node) => node.cloneNode(true)));
       [sectionHeading, ...section].forEach((node) => node.remove());
     });
+    // Spacer leftovers from the Shopify editor (<h2><span></span><br></h2>, <p> </p>).
+    $$("h1, h2, h3, h4, h5, h6, p", doc).forEach((node) => { if (!node.textContent.trim()) node.remove(); });
   }
 
   function renderDescription(wrap, product) {
