@@ -335,17 +335,13 @@
   const editions = { "30x40cm": 3000, "50x70cm": 2000, "70x100cm": 1000, "100x150cm": 500, "150x225cm": 100 };
   const editionFor = (title) => editions[title.replace(/\s+/g, "").replace(/×/g, "x").toLowerCase()];
 
-  // Size pills: Lumos "main" text style for the title (heavier) and "small" for the edition line (regular weight),
-  // plus a soft glow on hover and focus. Glow uses currentColor so it follows the pill's theme colour.
+  // Size pills: Lumos "main" text style for the title (heavier) and "small" for the edition line (regular weight).
+  // No hover or focus states: selection is the only state, and fill and text cross-fade together.
   const pillStyles = `
-    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; }
+    .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; transition: opacity 0.3s ease; }
     .pdp_pill_edition { font-weight: 400; }
-    .pdp_pill_wrap { transition: transform 0.3s ease, box-shadow 0.35s ease; }
-    .pdp_pill_wrap:hover, .pdp_pill_wrap:focus-visible { box-shadow: 0 0 1.5em color-mix(in srgb, currentColor 38%, transparent); }
-    .pdp_pill_wrap.is-active { box-shadow: 0 0 1.25em color-mix(in srgb, currentColor 22%, transparent); }
-    .pdp_pill_wrap.is-active:hover { box-shadow: 0 0 1.75em color-mix(in srgb, currentColor 45%, transparent); }
-    .pdp_pill_wrap[aria-disabled="true"] { box-shadow: none; }
-    @media (prefers-reduced-motion: reduce) { .pdp_pill_wrap { transition: none; } }`;
+    .pdp_pill_fill { transition: opacity 0.3s ease; }
+    .pdp_pill_wrap { transform: none; }`;
 
   // Pill layers hold the title as a text node plus an edition child, so only the text node is replaced.
   function setPillTitle(layer, title) {
@@ -532,6 +528,7 @@
           const pill = pillTemplate.cloneNode(true);
           setHidden(pill, false);
           pill.dataset.clone = "";
+          pill.removeAttribute("data-trigger"); // Lumos hover/focus trigger: not wanted on size pills
           pill.dataset.variantId = variant.id;
           $$('[data-shop-field="title"]', pill).forEach((layer) => setPillTitle(layer, variant.title));
           $$('.pdp_pill_text, .pdp_pill_text_alt', pill).forEach((layer) => layer.classList.add("u-text-style-main"));
