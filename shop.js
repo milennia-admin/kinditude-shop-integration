@@ -341,7 +341,9 @@
     .pdp_pill_text, .pdp_pill_text_alt { font-weight: 700; transition: opacity 0.3s ease; }
     .pdp_pill_edition { font-weight: 400; }
     .pdp_pill_fill { transition: opacity 0.3s ease; }
-    .pdp_pill_wrap { transform: none; }`;
+    .pdp_pill_wrap { transform: none; }
+    /* The layer and its nested edition line both trim their bottom edge, which squeezes the bottom padding; keep only the edition's. */
+    .pdp_pill_text::after, .pdp_pill_text_alt::after { margin-bottom: 0 !important; }`;
 
   // Pill layers hold the title as a text node plus an edition child, so only the text node is replaced.
   function setPillTitle(layer, title) {
