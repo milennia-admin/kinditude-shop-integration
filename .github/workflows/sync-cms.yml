@@ -1,0 +1,28 @@
+# Mirrors Shopify products into the Webflow "Shop Products" CMS collection (see README: Sync).
+# Needs the repository secret WEBFLOW_TOKEN (Webflow site token with CMS read + write).
+name: Sync Shopify products to Webflow CMS
+
+on:
+  schedule:
+    - cron: "17 5 * * *" # daily, 05:17 UTC
+  workflow_dispatch:
+  repository_dispatch:
+    types: [shopify-products-changed]
+
+concurrency:
+  group: sync-cms
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Sync (create, update, publish)
+        env:
+          WEBFLOW_TOKEN: ${{ secrets.WEBFLOW_TOKEN }}
+        run: node sync-cms.mjs --apply
