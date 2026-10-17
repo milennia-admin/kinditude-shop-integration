@@ -10,7 +10,7 @@
     token: "572944d57b05f996b877f364ffbb672b",
     apiVersion: "2025-07",
     storageKey: "kd_cart_id",
-    productPath: "/letter", // one product page, opened as <productPath>?handle=<handle>
+    productPath: "/shop-products", // CMS template page (synced by sync-cms.mjs), opened as <productPath>/<handle>
     activeClass: "is-active",
   };
 
@@ -297,7 +297,7 @@
           if (index < 3) img.fetchPriority = "high";
         });
         if (!product.availableForSale) el.dataset.soldOut = "true";
-        $$('[data-shop-field="link"]', el).forEach((link) => (link.href = `${productPath}?handle=${encodeURIComponent(product.handle)}`));
+        $$('[data-shop-field="link"]', el).forEach((link) => (link.href = `${productPath}/${encodeURIComponent(product.handle)}`));
         grid.append(el);
       });
       reveal(grid);
@@ -307,7 +307,7 @@
     finally { reveal(grid); }
   }
 
-  /* ---------- Product page (<productPath>?handle=<handle>) ---------- */
+  /* ---------- Product page (CMS template <productPath>/<handle>; ?handle= still works on a static page) ---------- */
 
   // "B – Brave (Namibia)" -> "Brave"
   const letterName = (title) => title.match(/[–-]\s*(.+?)\s*(?:\(.*\))?$/)?.[1] ?? title;
