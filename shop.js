@@ -419,10 +419,17 @@
     fillAccordions(wrap, doc);
     addAccordionIcons(wrap);
     // Children / Location meta lines (bold labels) take the accent colour.
+    // Description and stats share the tagline's weight, whatever the Designer sets it to.
+    const taglineWeight = getComputedStyle($('[data-shop-field="tagline"]', wrap) ?? document.body).fontWeight;
     $$("p", doc).forEach((paragraph) => {
-      if (paragraph.querySelector("strong")) paragraph.style.color = "var(--_theme---heading-accent)";
+      if (!paragraph.querySelector("strong")) return;
+      paragraph.style.color = "var(--_theme---heading-accent)";
+      $$("strong", paragraph).forEach((label) => (label.style.fontWeight = "inherit"));
     });
-    $$('[data-shop-field="description"]', wrap).forEach((el) => (el.innerHTML = doc.body.innerHTML));
+    $$('[data-shop-field="description"]', wrap).forEach((el) => {
+      el.innerHTML = doc.body.innerHTML;
+      el.style.fontWeight = taglineWeight;
+    });
   }
 
   async function initProduct() {
