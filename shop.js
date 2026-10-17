@@ -343,6 +343,19 @@
     .pdp_pill_fill { transition: opacity 0.3s ease; }
     .pdp_pill_wrap { transform: none; }
     .pdp_pill_text_alt { color: var(--_theme---background); } /* dark text on the selected (cream) fill */
+
+    /* Add to cart: taller, solid brand-tertiary, three-dot loader while the cart request runs. */
+    .shop_button_green { background-color: var(--swatch--brand-tertiary); }
+    .shop_button_green .button_main_element { padding-block: var(--_spacing---space--4); background-color: var(--swatch--brand-tertiary); border-color: var(--swatch--brand-tertiary); color: var(--swatch--dark-900); }
+    .shop_button_green .button_main_text { transition: opacity 0.2s ease; }
+    .pdp_add_dots { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0.45em; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+    .pdp_add_dots span { width: 0.5em; height: 0.5em; border-radius: 50%; background-color: currentColor; animation: pdp-dot-jump 1.1s ease-in-out infinite; }
+    .pdp_add_dots span:nth-child(2) { animation-delay: 0.14s; }
+    .pdp_add_dots span:nth-child(3) { animation-delay: 0.28s; }
+    [data-shop="add"][aria-busy="true"] .button_main_text { opacity: 0; }
+    [data-shop="add"][aria-busy="true"] .pdp_add_dots { opacity: 1; }
+    @keyframes pdp-dot-jump { 0%, 55%, 100% { transform: translateY(0); } 25% { transform: translateY(-0.3em); } }
+    @media (prefers-reduced-motion: reduce) { .pdp_add_dots span { animation: none; } }
     /* The layer and its nested edition line both trim their bottom edge, which squeezes the bottom padding; keep only the edition's. */
     .pdp_pill_text::after, .pdp_pill_text_alt::after { margin-bottom: 0 !important; }`;
 
@@ -482,11 +495,13 @@
       })
     );
 
+    $(".button_main_element", addButton)?.append(Object.assign(document.createElement("span"), { className: "pdp_add_dots", innerHTML: "<span></span><span></span><span></span>" }));
     addButton?.addEventListener("click", (event) => {
       event.preventDefault();
       if (!current?.availableForSale) return;
       withBusy(addButton, async () => {
-        await addToCart(current.id, quantity);
+        // Hold the loader briefly so a fast response doesn't flash it.
+        await Promise.all([addToCart(current.id, quantity), new Promise((resolve) => setTimeout(resolve, 700))]);
         setDrawer(true);
       });
     });
