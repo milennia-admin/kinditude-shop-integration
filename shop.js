@@ -360,11 +360,28 @@
   }
 
   // Leading icons for the Lumos accordion titles, keyed by title. Stroke styling lives in .pdp_accordion_lead_icon.
+  const iconHeart = '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>';
+  const iconRuler = '<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2m1-5 2 2m1-5 2 2"/>';
+  const iconTruck = '<path d="M2 6h11v10H2zM13 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>';
+  const iconBox = '<path d="m12 3 8 4v10l-8 4-8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/>';
+  const iconInfo = '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>';
+  const iconDrop = '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>';
+  const iconLeaf = '<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-5 6-8 10-10"/>';
   const accordionIcons = {
-    "about this print": '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
-    "sizes & framing": '<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2m1-5 2 2m1-5 2 2"/>',
-    shipping: '<path d="M2 6h11v10H2zM13 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
-    "returns & refunds": '<path d="m12 3 8 4v10l-8 4-8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/>',
+    "about this print": iconHeart,
+    "sizes & framing": iconRuler,
+    sizes: iconRuler,
+    "sizes & editions": iconRuler,
+    "sizing guide": iconRuler,
+    shipping: iconTruck,
+    delivery: iconTruck,
+    "print on demand & shipping": iconTruck,
+    "returns & refunds": iconBox,
+    returns: iconBox,
+    "product information": iconInfo,
+    "care instructions": iconDrop,
+    "collector benefits": iconHeart,
+    "paper & print quality": iconLeaf,
   };
 
   function addAccordionIcons(wrap) {
@@ -398,6 +415,44 @@
     "shipping information": "shipping",
     "return policy": "returns & refunds",
   };
+
+  // Non-letter products carry their accordion copy in the CMS ("Accordion Sections": one <h2> per item, then its
+  // content). Section n fills item n and the unused items are hidden. Letters leave the field empty and keep using
+  // the Shopify description (fillAccordions). A non-letter product with no sections has no accordions at all.
+  const isLetter = (product) => /^[A-Z]\s+[–-]\s+/.test(product.title);
+
+  function fillAccordionSource(wrap, product) {
+    // The page renders again when fresh data replaces the cached copy, so keep the CMS copy on the wrapper.
+    const source = $('[data-shop-field="accordion-source"]', wrap);
+    if (source) {
+      wrap.accordionHtml = source.innerHTML;
+      source.remove();
+    }
+    const html = wrap.accordionHtml || "";
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const sections = [];
+    $$("h2", doc).forEach((heading) => {
+      const body = [];
+      for (let node = heading.nextElementSibling; node && node.tagName !== "H2"; node = node.nextElementSibling) body.push(node);
+      sections.push({ title: heading.textContent.replace(/\s+/g, " ").trim(), body });
+    });
+    if (!sections.length) {
+      if (!isLetter(product)) $$(".pdp_accordions", wrap).forEach((el) => setHidden(el, true));
+      return false;
+    }
+    $$(".accordion_component", wrap).forEach((item, index) => {
+      const section = sections[index];
+      setHidden(item, !section);
+      if (!section) return;
+      const title = $(".accordion_toggle_text", item);
+      $$(".pdp_accordion_lead_icon", title).forEach((icon) => icon.remove());
+      title.textContent = section.title;
+      const target = $(".accordion_content_text", item);
+      target.innerHTML = "";
+      target.append(...section.body.map((node) => node.cloneNode(true)));
+    });
+    return true;
+  }
 
   function fillAccordions(wrap, doc) {
     const normalize = (text) => text.replace(/\s+/g, " ").trim().toLowerCase();
@@ -437,7 +492,7 @@
     // No heading in the Shopify description: hide the Designer placeholder instead of showing it.
     const taglineEl = $('[data-shop-field="tagline"]', wrap);
     if (taglineEl) setHidden(taglineEl, !tagline);
-    fillAccordions(wrap, doc);
+    if (!fillAccordionSource(wrap, product)) fillAccordions(wrap, doc);
     addAccordionIcons(wrap);
     // Children / Location meta lines (bold labels) take the accent colour.
     // Description and stats share the tagline's weight, whatever the Designer sets it to.
