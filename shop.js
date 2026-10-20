@@ -343,7 +343,6 @@
   //   be published for them; keyframes can't be defined in Designer styles either.
   const shopStyles = `
     .pdp_pill_text::after, .pdp_pill_text_alt::after { margin-bottom: 0 !important; }
-    .shop_button_green .button_main_element { flex: 1; width: 100%; background-color: transparent; border-color: transparent; backdrop-filter: none; border-radius: inherit; }
     .shop_button_green .button_main_text { transition: opacity 0.2s ease; }
     .pdp_add_dots { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0.45em; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
     .pdp_add_dots span { width: 0.5em; height: 0.5em; border-radius: 50%; background-color: currentColor; animation: pdp-dot-jump 1.1s ease-in-out infinite; }
