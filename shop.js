@@ -114,7 +114,8 @@
     variants(first: 2) { nodes { id } }`;
 
   const cartFields = `
-    id checkoutUrl totalQuantity
+    id checkoutUrl totalQuantity note
+    discountCodes { code applicable }
     cost { subtotalAmount { amount currencyCode } }
     lines(first: 50) { nodes {
       id quantity
@@ -178,6 +179,65 @@
     renderCart();
   }
 
+  async function updateNote(note) {
+    if (!cart) return;
+    const data = await storefront(
+      `mutation($id: ID!, $note: String) { cartNoteUpdate(cartId: $id, note: $note) { cart { ${cartFields} } userErrors { message } } }`,
+      { id: cart.id, note }
+    );
+    assertOk(data.cartNoteUpdate);
+    cart = data.cartNoteUpdate.cart; // no re-render: the shopper is typing in the field
+  }
+
+  async function submitDiscount() {
+    const root = cartRoot();
+    const input = $('[data-cart="discount-input"]', root);
+    const button = $('[data-cart="discount-apply"]', root);
+    const code = input?.value.trim();
+    if (!cart || !code) return;
+    await withBusy(button, async () => {
+      const kept = (cart.discountCodes ?? []).filter((d) => d.applicable).map((d) => d.code);
+      const codes = [...new Set([...kept, code])];
+      const data = await storefront(
+        `mutation($id: ID!, $codes: [String!]) { cartDiscountCodesUpdate(cartId: $id, discountCodes: $codes) { cart { ${cartFields} } userErrors { message } } }`,
+        { id: cart.id, codes }
+      );
+      assertOk(data.cartDiscountCodesUpdate);
+      cart = data.cartDiscountCodesUpdate.cart;
+      if (cart.discountCodes.some((d) => d.applicable && d.code.toLowerCase() === code.toLowerCase())) input.value = "";
+      renderCart();
+    });
+  }
+
+  // "Complete the alphabet": letter products, A to Z, loaded once.
+  let letters = null;
+  const loadLetters = () => (letters ??= storefront(`{ products(first: 50) { nodes { ${gridFields} } } }`)
+    .then((data) => data.products.nodes
+      .filter((p) => p.availableForSale && /^[A-Z]\s+[–-]\s+/.test(p.title))
+      .sort((a, b) => a.title.localeCompare(b.title)))
+    .catch((err) => { console.error("[shop]", err); return []; }));
+
+  async function renderSuggestion(root) {
+    const box = $('[data-cart="suggest"]', root);
+    if (!box) return;
+    const pool = cart?.totalQuantity ? await loadLetters() : [];
+    const inCart = new Set((cart?.lines.nodes ?? []).map((line) => line.merchandise.product.handle));
+    const pick = pool.find((p) => !inCart.has(p.handle));
+    if (!pick) { delete box.dataset.loaded; return; }
+    const multiple = pick.variants.nodes.length > 1;
+    $('[data-suggest="title"]', box).textContent = letterName(pick.title);
+    $('[data-suggest="price"]', box).textContent = (multiple ? "From " : "") + formatMoney(pick.priceRange.minVariantPrice);
+    $('[data-suggest="link"]', box).href = `${config.productPath}/${encodeURIComponent(pick.handle)}`;
+    const img = $("img", box);
+    if (img && pick.featuredImage) {
+      img.src = pick.featuredImage.url;
+      img.removeAttribute("srcset");
+      img.removeAttribute("sizes");
+      img.alt = pick.featuredImage.altText || letterName(pick.title);
+    }
+    box.dataset.loaded = "true";
+  }
+
   /* ---------- Cart drawer (Nav component) ---------- */
 
   const cartRoot = () => $('[data-cart="root"]');
@@ -220,8 +280,12 @@
         const el = template.cloneNode(true);
         setHidden(el, false);
         el.dataset.clone = "";
-        fill(el, "title", merchandise.product.title);
-        fill(el, "variant", merchandise.title === "Default Title" ? "" : merchandise.title);
+        const unit = line.quantity > 1
+          ? `${formatMoney({ amount: Number(line.cost.totalAmount.amount) / line.quantity, currencyCode: line.cost.totalAmount.currencyCode })} each`
+          : "";
+        const variant = merchandise.title === "Default Title" ? "" : merchandise.title;
+        fill(el, "title", letterName(merchandise.product.title));
+        fill(el, "variant", [variant, unit].filter(Boolean).join(" · "));
         fill(el, "qty", line.quantity);
         fill(el, "price", formatMoney(line.cost.totalAmount));
         fillImage(el, merchandise.image || merchandise.product.featuredImage, merchandise.product.title);
@@ -230,24 +294,68 @@
             event.preventDefault();
             const action = button.dataset.cartAction;
             const next = action === "inc" ? line.quantity + 1 : action === "dec" ? line.quantity - 1 : 0;
-            withBusy(button, () => updateLine(line.id, next));
+            withBusy(button, async () => {
+              if (next === 0 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                el.classList.add("is-removing");
+                await new Promise((resolve) => setTimeout(resolve, 250));
+              }
+              await updateLine(line.id, next);
+            }).finally(() => el.classList.remove("is-removing"));
           })
         );
         list.append(el);
       });
+      const suggest = $('[data-cart="suggest"]', list);
+      if (suggest) list.append(suggest);
     }
 
     if (cart) $$('[data-cart="subtotal"]', root).forEach((el) => (el.textContent = formatMoney(cart.cost.subtotalAmount)));
     $$('[data-cart="checkout"]', root).forEach((el) => {
       if (cart) el.href = cart.checkoutUrl;
     });
+
+    const noteField = $('[data-cart="note"]', root);
+    if (noteField && document.activeElement !== noteField) noteField.value = cart?.note ?? "";
+    const gift = $('[data-cart="gift"]', root);
+    if (gift && cart?.note) gift.open = true;
+
+    const codes = cart?.discountCodes ?? [];
+    const applied = codes.filter((d) => d.applicable).map((d) => d.code);
+    const rejected = codes.some((d) => !d.applicable);
+    const message = $('[data-cart="discount-msg"]', root);
+    if (message) {
+      message.textContent = applied.length
+        ? `Code ${applied.join(", ")} applied. Your discount shows at checkout.`
+        : rejected ? "That code can't be used on this order." : "";
+    }
+    const discount = $('[data-cart="discount"]', root);
+    if (discount && (applied.length || rejected)) discount.open = true;
+
+    renderSuggestion(root).catch((err) => console.error("[shop]", err));
   }
 
   function initCartUi() {
+    document.documentElement.classList.add("js-cart-ready"); // reveals the gift note, discount code and suggestion
+    let noteTimer;
+    const saveNote = (value) => updateNote(value).catch((err) => console.error("[shop]", err));
     document.addEventListener("click", (event) => {
       if (event.target.closest('[data-cart="open"]')) { event.preventDefault(); setDrawer(true); }
       else if (event.target.closest('[data-cart="close"]')) { event.preventDefault(); setDrawer(false); }
+      else if (event.target.closest('[data-cart="discount-apply"]')) { event.preventDefault(); submitDiscount(); }
       else if (event.target.closest('[data-cart="checkout"]') && (!cart || cart.totalQuantity === 0)) event.preventDefault();
+    });
+    document.addEventListener("input", (event) => {
+      if (!event.target.matches('[data-cart="note"]')) return;
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => saveNote(event.target.value), 600);
+    });
+    document.addEventListener("change", (event) => {
+      if (!event.target.matches('[data-cart="note"]')) return;
+      clearTimeout(noteTimer);
+      saveNote(event.target.value);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && event.target.matches('[data-cart="discount-input"]')) { event.preventDefault(); submitDiscount(); }
     });
     // Escape fires the dialog's cancel event: animate out instead of closing instantly.
     cartRoot()?.addEventListener("cancel", (event) => {
