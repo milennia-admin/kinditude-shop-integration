@@ -342,7 +342,11 @@
       if (event.target.closest('[data-cart="open"]')) { event.preventDefault(); setDrawer(true); }
       else if (event.target.closest('[data-cart="close"]')) { event.preventDefault(); setDrawer(false); }
       else if (event.target.closest('[data-cart="discount-apply"]')) { event.preventDefault(); submitDiscount(); }
-      else if (event.target.closest('[data-cart="checkout"]') && (!cart || cart.totalQuantity === 0)) event.preventDefault();
+      else if (event.target.closest('[data-cart="checkout"]')) {
+        // Button Main renders a <button>, which ignores href, so navigate explicitly.
+        event.preventDefault();
+        if (cart?.totalQuantity > 0 && cart.checkoutUrl) window.location.assign(cart.checkoutUrl);
+      }
     });
     document.addEventListener("input", (event) => {
       if (!event.target.matches('[data-cart="note"]')) return;
